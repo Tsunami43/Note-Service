@@ -11,7 +11,7 @@ class Database:
     def __init__(self):
         self.engine = create_async_engine(os.getenv("DATABASE_URL"), echo=False)
         self.SessionLocal = sessionmaker(
-            autocommit=False, autoflush=False, bind=self.engine, class_=AsyncSession
+            autocommit=True, autoflush=False, bind=self.engine, class_=AsyncSession
         )
 
     async def get_session(self):
