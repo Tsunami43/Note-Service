@@ -23,7 +23,9 @@ async def start_delete_note_handler(
             "Вы не авторизованы. Пожалуйста, войдите в систему с помощью команды /login."
         )
         return
-    await message.answer("Введите ID заметки для удаления:")
+    await message.answer(
+        "Для отмены действия /cancel.\n\nВведите ID заметки для удаления:"
+    )
     await state.set_state(DeleteNoteStates.waiting_for_note_id)
 
 
@@ -37,8 +39,11 @@ async def handle_note_id(
     success = await provider_note.delete_note(user.access_token, note_id)
 
     if success:
-        await message.answer(f"Заметка с ID {note_id} успешно удалена.")
+        await message.answer(
+            f"✅ <b>Заметка успешно удалена:</b>\n",
+            parse_mode="HTML",
+        )
     else:
-        await message.answer(f"Ошибка при удалении заметки с ID {note_id}.")
+        await message.answer("⚠️ Ошибка при удалении заметки.")
 
     await state.clear()

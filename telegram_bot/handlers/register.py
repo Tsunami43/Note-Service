@@ -23,7 +23,9 @@ async def handler_register(
     message: Message, state: FSMContext, user: AccessTokenResponse
 ):
     if not user:
-        await message.answer("Введите логин для регистрации:")
+        await message.answer(
+            "Для отмены действия /cancel.\n\nВведите логин для регистрации:"
+        )
         await state.set_state(RegisterStates.waiting_for_login)
     else:
         await message.answer("Вы уже авторизованны")

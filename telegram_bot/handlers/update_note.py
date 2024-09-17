@@ -25,7 +25,9 @@ async def start_update_note_handler(
             "Вы не авторизованы. Пожалуйста, войдите в систему с помощью команды /login."
         )
         return
-    await message.answer("Введите ID заметки для обновления:")
+    await message.answer(
+        "Для отмены действия /cancel.\n\nВведите ID заметки для обновления:"
+    )
     await state.set_state(UpdateNoteStates.waiting_for_note_id)
 
 
@@ -64,8 +66,17 @@ async def handle_content(
     note = await provider_note.update_note(user.access_token, note_id, note_data)
 
     if note:
-        await message.answer(f"Заметка успешно обновлена: {note.title}")
+        await message.answer(
+            f"✅ <b>Заметка успешно обновлена:</b>\n"
+            f"<b>ID:</b> <code>{note.id}</code>\n"
+            f"<b>Заголовок:</b> <i>{note.title}</i>\n"
+            f"<b>Содержимое:</b> <i>{note.content}</i>\n"
+            f"<b>Теги:</b> {', '.join(note.tags) if note.tags else 'Нет тегов'}\n"
+            f"<b>Создана:</b> <i>{note.created_at.strftime('%d.%m.%Y %H:%M:%S')}</i>\n"
+            f"<b>Обновлена:</b> <i>{note.updated_at.strftime('%d.%m.%Y %H:%M:%S')}</i>\n",
+            parse_mode="HTML",
+        )
     else:
-        await message.answer("Ошибка при обновлении заметки.")
+        await message.answer("⚠️ Ошибка при обновлении заметки.")
 
     await state.clear()

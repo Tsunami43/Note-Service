@@ -14,6 +14,8 @@ from handlers import (
     delete_note,
 )
 from middleware import UserMiddleware
+from aiogram.types import BotCommand
+
 
 bot = Bot(os.getenv("BOT_TOKEN"))
 dp = Dispatcher()
@@ -33,8 +35,26 @@ dp.message.outer_middleware(UserMiddleware())
 #
 
 
+async def set_bot_commands():
+    commands = [
+        BotCommand(command="/start", description="Начало работы с ботом"),
+        BotCommand(command="/help", description="Получить справку по командам"),
+        BotCommand(command="/create_note", description="Создать заметку"),
+        BotCommand(command="/get_all_notes", description="Получить все заметки"),
+        BotCommand(command="/search_notes", description="Поиск заметок по тегу"),
+        BotCommand(command="/update_note", description="Обновить заметку"),
+        BotCommand(command="/delete_note", description="Удалить заметку"),
+        BotCommand(command="/login", description="Авторизация"),
+        BotCommand(command="/register", description="Регистрация"),
+        BotCommand(command="/cancel", description="Отмена действия"),
+    ]
+    await bot.set_my_commands(commands)
+
+
 async def main():
     try:
+        # установка пользовательских команд
+        await set_bot_commands()
         # Для пропуска ивентов которые пришли, когда бот был неактивен
         await bot.delete_webhook(drop_pending_updates=True)
         # добавляем обработчики

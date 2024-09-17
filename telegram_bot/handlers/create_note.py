@@ -25,7 +25,7 @@ async def start_create_note_handler(
             "Вы не авторизованы. Пожалуйста, войдите в систему с помощью команды /login."
         )
         return
-    await message.answer("Введите заголовок заметки:")
+    await message.answer("Для отмены действия /cancel.\n\nВведите заголовок заметки:")
     await state.set_state(CreateNoteStates.waiting_for_title)
 
 
@@ -58,8 +58,16 @@ async def handle_tags(message: Message, state: FSMContext, user: AccessTokenResp
     note = await provider_note.create_note(user.access_token, note_data)
 
     if note:
-        await message.answer(f"Заметка успешно создана: {note.title}")
+        await message.answer(
+            f"✅ <b>Заметка успешно создана:</b>\n"
+            f"<b>ID:</b> <code>{note.id}</code>\n"
+            f"<b>Заголовок:</b> <i>{note.title}</i>\n"
+            f"<b>Содержимое:</b> <i>{note.content}</i>\n"
+            f"<b>Теги:</b> {', '.join(note.tags) if note.tags else 'Нет тегов'}\n"
+            f"<b>Создана:</b> <i>{note.created_at.strftime('%d.%m.%Y %H:%M:%S')}</i>\n"
+            f"<b>Обновлена:</b> <i>{note.updated_at.strftime('%d.%m.%Y %H:%M:%S')}</i>\n",
+            parse_mode="HTML",
+        )
     else:
-        await message.answer("Ошибка при создании заметки.")
-
+        await message.answer("⚠️ Ошибка при создании заметки.")
     await state.clear()

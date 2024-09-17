@@ -21,7 +21,20 @@ async def get_all_notes_handler(
     notes = await provider_note.get_all_notes(user.access_token)
 
     if notes:
-        result = "\n".join([f"Заметка {note.id}: {note.title}" for note in notes])
-        await message.answer(f"Все ваши заметки:\n{result}")
+        notes_summary = [
+            f"📝 <b>Заметка ID:</b> <code>{note.id}</code>\n"
+            f"<b>Заголовок:</b> <i>{note.title}</i>\n"
+            f"<b>Содержимое:</b> <i>{note.content}</i>\n"
+            f"<b>Теги:</b> {', '.join(note.tags) if note.tags else 'Нет тегов'}\n"
+            f"<b>Создана:</b> <i>{note.created_at.strftime('%d.%m.%Y %H:%M:%S')}</i>\n"
+            f"<b>Обновлена:</b> <i>{note.updated_at.strftime('%d.%m.%Y %H:%M:%S')}</i>\n"
+            f"{'-'*40}\n"
+            for note in notes
+        ]
+        result = "\n".join(notes_summary)
+        await message.answer(
+            f"📚 <b>Количество заметок:</b> <code>{len(notes)}</code>\n\n{result}",
+            parse_mode="HTML",
+        )
     else:
-        await message.answer("У вас нет заметок.")
+        await message.answer("📭 У вас нет заметок.")

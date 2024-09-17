@@ -23,7 +23,9 @@ async def start_search_note_handler(
             "Вы не авторизованы. Пожалуйста, войдите в систему с помощью команды /login."
         )
         return
-    await message.answer("Введите тег для поиска заметок:")
+    await message.answer(
+        "Для отмены действия /cancel.\n\nВведите тег для поиска заметок:"
+    )
     await state.set_state(SearchNoteStates.waiting_for_tag)
 
 
@@ -35,9 +37,22 @@ async def handle_tag(message: Message, state: FSMContext, user: AccessTokenRespo
     notes = await provider_note.search_notes_by_tag(user.access_token, tag)
 
     if notes:
-        result = "\n".join([f"Заметка {note.id}: {note.title}" for note in notes])
-        await message.answer(f"Найденные заметки с тегом {tag}:\n{result}")
+        notes_summary = [
+            f"📝 <b>Заметка ID:</b> <code>{note.id}</code>\n"
+            f"<b>Заголовок:</b> <i>{note.title}</i>\n"
+            f"<b>Содержимое:</b> <i>{note.content}</i>\n"
+            f"<b>Теги:</b> {', '.join(note.tags) if note.tags else 'Нет тегов'}\n"
+            f"<b>Создана:</b> <i>{note.created_at.strftime('%d.%m.%Y %H:%M:%S')}</i>\n"
+            f"<b>Обновлена:</b> <i>{note.updated_at.strftime('%d.%m.%Y %H:%M:%S')}</i>\n"
+            f"{'-'*40}\n"
+            for note in notes
+        ]
+        result = "\n".join(notes_summary)
+        await message.answer(
+            f"📚 <b>Количество заметок:</b> <code>{len(notes)}</code>\n\n{result}",
+            parse_mode="HTML",
+        )
     else:
-        await message.answer(f"Заметки с тегом {tag} не найдены.")
+        await message.answer(f"📭 Заметки с тегом {tag} не найдены.")
 
     await state.clear()

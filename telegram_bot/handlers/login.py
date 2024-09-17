@@ -21,7 +21,7 @@ router = Router()
 @router.message(Command("login"))
 async def handler_login(message: Message, state: FSMContext, user: AccessTokenResponse):
     if not user:
-        await message.answer("Введите логин для входа:")
+        await message.answer("Для отмены действия /cancel.\n\nВведите логин для входа:")
         await state.set_state(LoginStates.waiting_for_login)
     else:
         await message.answer("Вы уже авторизованны")
