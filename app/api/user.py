@@ -6,7 +6,7 @@ from datetime import timedelta, datetime
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from loguru import logger
-from schemas.user import UserCreate, UserResponse
+from schemas.user import UserCreate, UserLogin, UserResponse
 from models.user import UserModel
 from database import Database
 
@@ -17,7 +17,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
-ACCESS_TOKEN_EXPIRE_MINUTES = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 
 def verify_password(plain_password, hashed_password):
@@ -55,7 +55,7 @@ async def authenticate_user(db: AsyncSession, username: str, password: str):
         raise HTTPException(status_code=500, detail="Ошибка сервера")
 
 
-@router.post("/users/", response_model=UserResponse)
+@router.post("/register", response_model=UserResponse)
 async def create_user(user: UserCreate, db: AsyncSession = Depends(db.get_session)):
     try:
         logger.info(f"Создание пользователя: {user.username}")
@@ -72,9 +72,9 @@ async def create_user(user: UserCreate, db: AsyncSession = Depends(db.get_sessio
         raise HTTPException(status_code=500, detail="Ошибка создания пользователя")
 
 
-@router.post("/token")
+@router.post("/login", response_model=dict)
 async def login_for_access_token(
-    form_data: UserCreate, db: AsyncSession = Depends(db.get_session)
+    form_data: UserLogin, db: AsyncSession = Depends(db.get_session)
 ):
     user = await authenticate_user(db, form_data.username, form_data.password)
     if not user:
@@ -85,7 +85,7 @@ async def login_for_access_token(
         )
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
+        data={"user_id": user.id}, expires_delta=access_token_expires
     )
     logger.info(f"Пользователь {user.username} успешно аутентифицирован")
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token}
