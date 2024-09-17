@@ -9,6 +9,7 @@ attrs==24.2.0
 certifi==2024.8.30
 frozenlist==1.4.1
 idna==3.10
+loguru==0.7.2
 magic-filter==1.0.12
 multidict==6.1.0
 pydantic==2.8.2
