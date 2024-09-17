@@ -3,13 +3,16 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import text
 from loguru import logger
 from datetime import datetime
 from schemas.note import NoteCreate, NoteUpdate, NoteResponse
 from models.note import NoteModel
 from database import Database
 from jose import JWTError, jwt
+from typing import List
 
+# from sqlalchemy.dialects.postgresql import ARRAY
 
 router = APIRouter()
 db = Database()
@@ -82,6 +85,8 @@ async def read_note(
             raise HTTPException(status_code=404, detail="Заметка не найдена")
         logger.info(f"Заметка с ID {note_id} успешно получена")
         return note
+    except HTTPException as e:
+        raise e
     except Exception as e:
         logger.error(f"Ошибка при получении заметки: {e}")
         raise HTTPException(status_code=500, detail="Ошибка при получении заметки")
@@ -160,6 +165,85 @@ async def delete_note(
         await db.commit()
         logger.info(f"Заметка с ID {note_id} успешно удалена")
         return {"detail": "Заметка успешно удалена"}
+    except HTTPException as e:
+        raise e
     except Exception as e:
         logger.error(f"Ошибка при удалении заметки: {e}")
         raise HTTPException(status_code=500, detail="Ошибка при удалении заметки")
+
+
+@router.get("/notes/tag/{tag}", response_model=List[NoteResponse])
+async def search_notes_by_tag(
+    tag: str,
+    db: AsyncSession = Depends(db.get_session),
+    user_id: int = Depends(get_current_user_id),
+):
+    try:
+        logger.info(
+            f"Запрос на поиск заметок с тегом '{tag}' для пользователя с ID: {user_id}"
+        )
+        # Не смог реализовать так из-за ошибки имплимента для ARRAY
+        # result = await db.execute(
+        #     select(NoteModel).where(
+        #         NoteModel.user_id == user_id,
+        #         NoteModel.tags.contains(
+        #             [tag]
+        #         ),  # Проверяем, содержит ли теги список с указанным тегом
+        #     )
+        # )
+        # notes = result.scalars().all()
+
+        # Выполняем сырой SQL-запрос для поиска заметок по тегу
+        query = text(
+            """
+            SELECT * FROM notes
+            WHERE user_id = :user_id
+            AND :tag = ANY(tags);
+        """
+        )
+        result = await db.execute(query, {"user_id": user_id, "tag": tag})
+        notes = result.mappings().all()
+
+        if not notes:
+            logger.warning(
+                f"Заметки с тегом '{tag}' не найдены для пользователя с ID {user_id}"
+            )
+            raise HTTPException(status_code=404, detail="Заметки не найдены")
+
+        logger.info(
+            f"Найдено {len(notes)} заметок с тегом '{tag}' для пользователя с ID: {user_id}"
+        )
+        return notes
+    except Exception as e:
+        logger.error(f"Ошибка при поиске заметок с тегом '{tag}': {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка при поиске заметок: {e}")
+
+
+@router.get("/notes/", response_model=List[NoteResponse])
+async def get_all_notes(
+    db: AsyncSession = Depends(db.get_session),
+    user_id: int = Depends(get_current_user_id),
+):
+    try:
+
+        logger.info(
+            f"Запрос на получение всех заметок для пользователя с ID: {user_id}"
+        )
+        # Выполняем запрос для получения всех заметок текущего пользователя
+        result = await db.execute(select(NoteModel).where(NoteModel.user_id == user_id))
+        notes = result.scalars().all()
+
+        if not notes:
+            logger.warning(f"Заметки не найдены для пользователя с ID {user_id}")
+            raise HTTPException(status_code=404, detail="Заметки не найдены")
+
+        logger.info(f"Найдено {len(notes)} заметок для пользователя с ID: {user_id}")
+        return notes
+
+    except Exception as e:
+        logger.error(
+            f"Ошибка при получении заметок для пользователя с ID {user_id}: {e}"
+        )
+        raise HTTPException(
+            status_code=500, detail=f"Ошибка при получении заметок: {e}"
+        )
