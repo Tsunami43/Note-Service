@@ -9,9 +9,10 @@ load_dotenv()
 # Получение имени текущей директории
 current_directory_name = os.path.basename(os.getcwd())
 
-# Формирование пути для лог-файлов
+os.makedirs(".", exist_ok=True)  # Создание папки logs, если её нет
+
 log_file_path = os.path.join(
-    "..", "logs", f"{current_directory_name}_{{time:YYYY-MM-DD}}.log"
+    "logs", f"{current_directory_name}_{{time:YYYY-MM-DD}}.log"
 )
 
 # Настройка ротации логов

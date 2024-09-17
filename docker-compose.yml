@@ -1,0 +1,37 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    volumes:
+      - ./logs:/app/logs  # Монтируем папку logs с хоста в контейнер
+      - ./.env:/app/.env
+    ports:
+      - "${PORT_APP}:${PORT_APP}"
+    depends_on:
+      - db
+
+  telegram_bot:
+    build:
+      context: .
+      dockerfile: telegram_bot/Dockerfile
+    volumes:
+      - ./logs:/bot/logs  # Монтируем папку logs с хоста в контейнер
+      - ./.env:/bot/.env
+    depends_on:
+      - app
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
+
