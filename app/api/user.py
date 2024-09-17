@@ -1,5 +1,5 @@
 import os
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from datetime import timedelta, datetime
@@ -15,11 +15,16 @@ from schemas.user import (
 )
 from models.user import UserModel
 from database import Database
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
 
 router = APIRouter()
 db = Database()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+limiter = Limiter(key_func=get_remote_address)
+
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
@@ -62,7 +67,10 @@ async def authenticate_user(db: AsyncSession, username: str, password: str):
 
 
 @router.post("/register", response_model=UserResponse)
-async def create_user(user: UserCreate, db: AsyncSession = Depends(db.get_session)):
+@limiter.limit("3/minute")
+async def create_user(
+    request: Request, user: UserCreate, db: AsyncSession = Depends(db.get_session)
+):
     try:
         logger.info(f"Создание пользователя: {user.username}")
         db_user = UserModel(
@@ -81,8 +89,9 @@ async def create_user(user: UserCreate, db: AsyncSession = Depends(db.get_sessio
 
 
 @router.post("/login", response_model=dict)
+@limiter.limit("3/minute")
 async def login_for_access_token(
-    form_data: UserLogin, db: AsyncSession = Depends(db.get_session)
+    request: Request, form_data: UserLogin, db: AsyncSession = Depends(db.get_session)
 ):
     user = await authenticate_user(db, form_data.username, form_data.password)
     if not user:
@@ -100,7 +109,9 @@ async def login_for_access_token(
 
 
 @router.post("/add_telegram", response_model=UserResponse)
+@limiter.limit("3/minute")
 async def update_telegram_id_with_credentials(
+    request: Request,
     form_data: AddUserTelegram,
     db: AsyncSession = Depends(db.get_session),
 ):

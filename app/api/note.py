@@ -1,5 +1,5 @@
 import os
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -11,11 +11,15 @@ from models.note import NoteModel
 from database import Database
 from jose import JWTError, jwt
 from typing import List
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 # from sqlalchemy.dialects.postgresql import ARRAY
 
 router = APIRouter()
 db = Database()
+
+limiter = Limiter(key_func=get_remote_address)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -39,7 +43,9 @@ def get_current_user_id(token: str = Depends(oauth2_scheme)):
 
 
 @router.post("/notes/", response_model=NoteResponse)
+@limiter.limit("20/minute")
 async def create_note(
+    request: Request,
     note: NoteCreate,
     db: AsyncSession = Depends(db.get_session),
     user_id: int = Depends(get_current_user_id),
@@ -63,7 +69,9 @@ async def create_note(
 
 
 @router.get("/notes/{note_id}", response_model=NoteResponse)
+@limiter.limit("20/minute")
 async def read_note(
+    request: Request,
     note_id: int,
     db: AsyncSession = Depends(db.get_session),
     user_id: int = Depends(get_current_user_id),
@@ -93,7 +101,9 @@ async def read_note(
 
 
 @router.put("/notes/{note_id}", response_model=NoteResponse)
+@limiter.limit("20/minute")
 async def update_note(
+    request: Request,
     note_id: int,
     note: NoteUpdate,
     db: AsyncSession = Depends(db.get_session),
@@ -141,7 +151,9 @@ async def update_note(
 
 
 @router.delete("/notes/{note_id}")
+@limiter.limit("20/minute")
 async def delete_note(
+    request: Request,
     note_id: int,
     db: AsyncSession = Depends(db.get_session),
     user_id: int = Depends(get_current_user_id),
@@ -173,7 +185,9 @@ async def delete_note(
 
 
 @router.get("/notes/tag/{tag}", response_model=List[NoteResponse])
+@limiter.limit("20/minute")
 async def search_notes_by_tag(
+    request: Request,
     tag: str,
     db: AsyncSession = Depends(db.get_session),
     user_id: int = Depends(get_current_user_id),
@@ -220,7 +234,9 @@ async def search_notes_by_tag(
 
 
 @router.get("/notes/", response_model=List[NoteResponse])
+@limiter.limit("20/minute")
 async def get_all_notes(
+    request: Request,
     db: AsyncSession = Depends(db.get_session),
     user_id: int = Depends(get_current_user_id),
 ):
