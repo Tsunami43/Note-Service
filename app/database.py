@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from loguru import logger
+from sqlalchemy.exc import SQLAlchemyError
 
 Base = declarative_base()
 
@@ -19,7 +20,7 @@ class Database:
             async with self.SessionLocal() as session:
                 logger.info("Создание сессии для работы с базой данных")
                 yield session
-        except Exception as e:
+        except SQLAlchemyError as e:  # чтобы мы не поймали ошибку от роутеров
             logger.error(f"Ошибка при создании сессии: {e}")
             raise e
 
