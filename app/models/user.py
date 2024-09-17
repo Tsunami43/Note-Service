@@ -8,3 +8,4 @@ class UserModel(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    telegram_id = Column(Integer, unique=True, nullable=True)

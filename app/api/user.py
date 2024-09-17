@@ -6,7 +6,13 @@ from datetime import timedelta, datetime
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from loguru import logger
-from schemas.user import UserCreate, UserLogin, UserResponse
+from schemas.user import (
+    UserCreate,
+    UserLogin,
+    AddUserTelegram,
+    LoginWithTelegram,
+    UserResponse,
+)
 from models.user import UserModel
 from database import Database
 
@@ -60,7 +66,9 @@ async def create_user(user: UserCreate, db: AsyncSession = Depends(db.get_sessio
     try:
         logger.info(f"Создание пользователя: {user.username}")
         db_user = UserModel(
-            username=user.username, hashed_password=get_password_hash(user.password)
+            username=user.username,
+            hashed_password=get_password_hash(user.password),
+            telegram_id=user.telegram_id,  # Устанавливаем telegram_id
         )
         db.add(db_user)
         await db.commit()
@@ -88,4 +96,71 @@ async def login_for_access_token(
         data={"user_id": user.id}, expires_delta=access_token_expires
     )
     logger.info(f"Пользователь {user.username} успешно аутентифицирован")
+    return {"access_token": access_token}
+
+
+@router.post("/add_telegram", response_model=UserResponse)
+async def update_telegram_id_with_credentials(
+    form_data: AddUserTelegram,
+    db: AsyncSession = Depends(db.get_session),
+):
+    try:
+        logger.info(f"Обновление telegram_id для пользователя: {form_data.username}")
+
+        # Аутентификация пользователя
+        user = await authenticate_user(db, form_data.username, form_data.password)
+        if not user:
+            logger.warning(
+                f"Неверное имя пользователя или пароль: {form_data.username}"
+            )
+            raise HTTPException(
+                status_code=401, detail="Неверное имя пользователя или пароль"
+            )
+
+        # Обновление telegram_id
+        user.telegram_id = form_data.telegram_id
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        logger.info(f"Telegram ID пользователя {user.username} успешно обновлен")
+        return user
+    except Exception as e:
+        logger.error(f"Ошибка обновления telegram_id: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка обновления telegram_id")
+
+
+async def authenticate_user_by_telegram_id(db: AsyncSession, telegram_id: str):
+    logger.info(f"Попытка аутентификации пользователя по telegram_id: {telegram_id}")
+    try:
+        result = await db.execute(
+            select(UserModel).where(UserModel.telegram_id == telegram_id)
+        )
+        user = result.scalars().first()
+        if not user:
+            logger.warning(f"Пользователь с telegram_id {telegram_id} не найден")
+            return False
+        return user
+    except Exception as e:
+        logger.error(f"Ошибка аутентификации: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка сервера")
+
+
+@router.post("/login_by_telegram_id", response_model=dict)
+async def login_by_telegram_id(
+    form_data: LoginWithTelegram, db: AsyncSession = Depends(db.get_session)
+):
+    user = await authenticate_user_by_telegram_id(db, form_data.telegram_id)
+    if not user:
+        logger.warning(f"Пользователь с telegram_id {form_data.telegram_id} не найден")
+        raise HTTPException(
+            status_code=401,
+            detail="Пользователь с telegram_id не найден",
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"user_id": user.id}, expires_delta=access_token_expires
+    )
+    logger.info(
+        f"Пользователь с telegram_id {form_data.telegram_id} успешно аутентифицирован"
+    )
     return {"access_token": access_token}
